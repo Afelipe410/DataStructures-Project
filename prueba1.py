@@ -21,8 +21,9 @@ font = pygame.font.SysFont('Arial', 20)
 
 # Clase para representar un nodo del árbol
 class TreeNode:
-    def __init__(self, value):
-        self.value = value
+    def __init__(self, id, name):
+        self.id = id
+        self.name = name
         self.left = None
         self.right = None
         self.height = 1
@@ -67,16 +68,16 @@ class AVLTree:
 
         return y
 
-    def insert(self, node, value):
+    def insert(self, node, id, name):
         if not node:
-            return TreeNode(value)
+            return TreeNode(id, name)
 
-        if value < node.value:
-            node.left = self.insert(node.left, value)
-        elif value > node.value:
-            node.right = self.insert(node.right, value)
+        if id < node.id:
+            node.left = self.insert(node.left, id, name)
+        elif id > node.id:
+            node.right = self.insert(node.right, id, name)
         else:
-            return node
+            return node  # Si el ID ya existe, no lo insertamos
 
         # Actualizar la altura del ancestro
         node.height = 1 + max(self.get_height(node.left), self.get_height(node.right))
@@ -85,14 +86,14 @@ class AVLTree:
         balance = self.get_balance(node)
 
         # Balancear el nodo si está desbalanceado
-        if balance > 1 and value < node.left.value:
+        if balance > 1 and id < node.left.id:
             return self.rotate_right(node)
-        if balance < -1 and value > node.right.value:
+        if balance < -1 and id > node.right.id:
             return self.rotate_left(node)
-        if balance > 1 and value > node.left.value:
+        if balance > 1 and id > node.left.id:
             node.left = self.rotate_left(node.left)
             return self.rotate_right(node)
-        if balance < -1 and value < node.right.value:
+        if balance < -1 and id < node.right.id:
             node.right = self.rotate_right(node.right)
             return self.rotate_left(node)
 
@@ -123,8 +124,8 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=100):
 
     # Dibuja el nodo como un círculo
     pygame.draw.circle(screen, BLUE, (int(x), int(y)), 20)
-    text = font.render(str(node.value), True, WHITE)
-    screen.blit(text, (int(x) - 10, int(y) - 10))
+    text = font.render(f"{node.id}: {node.name}", True, WHITE)
+    screen.blit(text, (int(x) - 30, int(y) - 10))  # Muestra el ID y el nombre
 
 # Crear y llenar el árbol AVL
 avl_tree = AVLTree()
@@ -132,7 +133,9 @@ root = None
 
 # Variables para el control del árbol y la inserción de nuevos números
 max_depth = 5
-input_value = ""  # Para capturar el número que el usuario desea insertar
+input_id = ""    # Para capturar el ID
+input_name = ""  # Para capturar el nombre
+inserting_id = True  # Indica si estamos en el campo de ID o de nombre
 
 # Bucle principal del programa
 running = True
@@ -144,9 +147,11 @@ while running:
     if root:
         draw_tree(screen, root, width // 2, 50, 0, 0, max_depth)
 
-    # Mostrar la entrada del número
-    input_text = font.render(f"Insertar número: {input_value}", True, BLACK)
-    screen.blit(input_text, (10, height - 40))
+    # Mostrar la entrada del ID y del nombre
+    input_text_id = font.render(f"Insertar ID: {input_id}", True, BLACK)
+    input_text_name = font.render(f"Insertar Nombre: {input_name}", True, BLACK)
+    screen.blit(input_text_id, (10, height - 60))
+    screen.blit(input_text_name, (10, height - 30))
 
     # Actualiza la pantalla
     pygame.display.flip()
@@ -156,17 +161,32 @@ while running:
         if event.type == pygame.QUIT:
             running = False
 
-        # Captura el input del teclado para insertar un nuevo número
+        # Captura el input del teclado para insertar un nuevo ID y nombre
         if event.type == pygame.KEYDOWN:
             if event.key == pygame.K_BACKSPACE:
-                input_value = input_value[:-1]  # Borra el último carácter
+                # Borra el último carácter de la entrada activa
+                if inserting_id and len(input_id) > 0:
+                    input_id = input_id[:-1]  # Borra del ID
+                elif not inserting_id and len(input_name) > 0:
+                    input_name = input_name[:-1]  # Borra del nombre
             elif event.key == pygame.K_RETURN:
-                if input_value.isdigit():
-                    # Inserta el número en el árbol AVL y actualiza la raíz
-                    root = avl_tree.insert(root, int(input_value))  # Actualiza la raíz aquí
-                    input_value = ""  # Limpia el input después de la inserción
-            elif event.unicode.isdigit():
-                input_value += event.unicode  # Agrega el número a la cadena de entrada
+                if inserting_id:
+                    # Cambiar al campo de nombre
+                    inserting_id = False
+                else:
+                    # Verificar que el ID no esté vacío y que el nombre tenga al menos un carácter
+                    if input_id.isdigit() and len(input_name) > 0:
+                        # Inserta el ID y nombre en el árbol AVL
+                        root = avl_tree.insert(root, int(input_id), input_name)  # Actualiza la raíz aquí
+                        input_id = ""    # Limpia el input del ID después de la inserción
+                        input_name = ""  # Limpia el input del nombre después de la inserción
+                        inserting_id = True  # Volver al campo de ID
+            elif event.unicode.isalnum() or event.unicode in [' ', '_']:  # Permitir letras, números, espacios y guiones bajos
+                # Agregar caracteres al campo correspondiente
+                if inserting_id:
+                    input_id += event.unicode  # Agrega el carácter al ID
+                else:
+                    input_name += event.unicode  # Agrega el carácter al nombre
 
 # Salir de pygame
 pygame.quit()
