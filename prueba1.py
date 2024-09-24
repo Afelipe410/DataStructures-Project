@@ -19,7 +19,6 @@ pygame.display.set_caption("Árbol AVL en Pygame")
 pygame.font.init()
 font = pygame.font.SysFont('Arial', 20)
 
-
 # Clase para representar un nodo del árbol
 class TreeNode:
     def __init__(self, value):
@@ -27,7 +26,6 @@ class TreeNode:
         self.left = None
         self.right = None
         self.height = 1
-
 
 # Clase para manejar un árbol AVL
 class AVLTree:
@@ -100,7 +98,6 @@ class AVLTree:
 
         return node
 
-
 # Función para dibujar el árbol
 def draw_tree(screen, node, x, y, angle, depth, max_depth, length=100):
     if node is None or depth > max_depth:
@@ -112,8 +109,8 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=100):
     # Calcular las posiciones de los hijos en diagonal
     left_x = x - branch_length * math.cos(math.radians(angle + 30))
     left_y = y + branch_length * math.sin(math.radians(angle + 30))
-    right_x = x + branch_length * math.cos(math.radians(angle - 30))
-    right_y = y + branch_length * math.sin(math.radians(angle - 30))
+    right_x = x + branch_length * math.cos(math.radians(angle + 30))
+    right_y = y + branch_length * math.sin(math.radians(angle + 30))
 
     # Dibuja las líneas entre los nodos (las ramas)
     if node.left:
@@ -122,14 +119,12 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=100):
 
     if node.right:
         pygame.draw.line(screen, BLACK, (x, y), (right_x, right_y), 2)
-        draw_tree(screen, node.right, right_x, right_y, angle + 30, depth + 1, max_depth,
-                  length)  # Cambié el ángulo aquí
+        draw_tree(screen, node.right, right_x, right_y, angle + 30, depth + 1, max_depth, length)
 
     # Dibuja el nodo como un círculo
     pygame.draw.circle(screen, BLUE, (int(x), int(y)), 20)
     text = font.render(str(node.value), True, WHITE)
     screen.blit(text, (int(x) - 10, int(y) - 10))
-
 
 # Crear y llenar el árbol AVL
 avl_tree = AVLTree()
@@ -167,8 +162,8 @@ while running:
                 input_value = input_value[:-1]  # Borra el último carácter
             elif event.key == pygame.K_RETURN:
                 if input_value.isdigit():
-                    # Inserta el número en el árbol AVL
-                    root = avl_tree.insert(root, int(input_value))
+                    # Inserta el número en el árbol AVL y actualiza la raíz
+                    root = avl_tree.insert(root, int(input_value))  # Actualiza la raíz aquí
                     input_value = ""  # Limpia el input después de la inserción
             elif event.unicode.isdigit():
                 input_value += event.unicode  # Agrega el número a la cadena de entrada
