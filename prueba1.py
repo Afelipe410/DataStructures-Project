@@ -99,7 +99,7 @@ class AVLTree:
         return node
 
 # Función para dibujar el árbol
-def draw_tree(screen, node, x, y, angle, depth, max_depth, length=100):
+def draw_tree(screen, node, x, y, angle, depth, max_depth, length=150):
     if node is None or depth > max_depth:
         return
 
