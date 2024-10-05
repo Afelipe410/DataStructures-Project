@@ -322,20 +322,36 @@ def draw_color_legend(screen, x, y):
 # [El resto del código permanece igual, solo asegúrate de usar la nueva versión del DropdownMenu]
 # Crear el menú desplegable con la nueva implementación
 dropdown = DropdownMenu(200, height - 90, 150, 25, CATEGORIES)
+show_legend = False
 
 # Modificar el bucle principal del programa:
 running = True
 while running:
     screen.fill(WHITE)
 
+    # Dibujar el árbol
     if root:
         draw_tree(screen, root, width // 2, 50, 0, 0, max_depth)
 
-    # Dibujar la leyenda en la esquina superior derecha
-    draw_color_legend(screen, width - 100, 10)
-    input_text = font.render(f"Paso {step + 1}:", True, BLACK)
-    screen.blit(input_text, (10, height - 120))
+    # Crear el botón "Buscar precio" encima del botón "Categorías"
+    price_search_button_rect = pygame.Rect(width - 150, height - 100, 140, 40)  # Ajusta posición/tamaño
+    pygame.draw.rect(screen, (100, 100, 100), price_search_button_rect)
+    price_search_text = font.render("Buscar precio", True, WHITE)
+    screen.blit(price_search_text, (width - 140, height - 90))
 
+    # Dibujar el botón de "Categorías"
+    button_rect = pygame.Rect(width - 150, height - 50, 140, 40)
+    pygame.draw.rect(screen, (100, 100, 100), button_rect)
+    button_text = font.render("Categorías", True, WHITE)
+    screen.blit(button_text, (width - 140, height - 40))
+
+    # Mostrar la leyenda de categorías en la esquina superior derecha
+    if show_legend:
+        draw_color_legend(screen, width - 200, 20)  # Cambié la posición a la parte superior derecha
+
+
+
+    # Dibujar instrucciones de inserción de productos
     if step == 0:
         instruction = font.render("ID del producto:", True, BLACK)
         screen.blit(instruction, (10, height - 90))
@@ -361,25 +377,30 @@ while running:
         screen.blit(instruction, (10, height - 90))
         dropdown.draw(screen)
 
+    # Actualizar pantalla
     pygame.display.flip()
 
+    # Manejo de eventos
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+        elif event.type == pygame.MOUSEBUTTONDOWN:
+            # Manejamos clic en botón de categorías
+            if button_rect.collidepoint(event.pos):
+                show_legend = not show_legend
 
-        if step == 4:
-            if dropdown.handle_event(event):
-                # Si se seleccionó una categoría, insertar el producto
-                root = avl_tree.insert(root, int(input_value), input_name,
-                                     int(input_quantity), float(input_price),
-                                     dropdown.selected)
-                # Limpiar las entradas
-                input_value = ""
-                input_name = ""
-                input_quantity = ""
-                input_price = ""
-                dropdown.selected = None
-                step = 0
+        # Manejamos selección de categoría y finalizamos inserción
+        if step == 4 and dropdown.handle_event(event):
+            root = avl_tree.insert(root, int(input_value), input_name, int(input_quantity),
+                                   float(input_price), dropdown.selected)
+            # Limpiar las entradas
+            input_value = ""
+            input_name = ""
+            input_quantity = ""
+            input_price = ""
+            dropdown.selected = None
+            step = 0
+
         elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_BACKSPACE:
                 if step == 0:
