@@ -6,9 +6,9 @@ import sys
 pygame.init()
 
 # Definir los colores
-WHITE = (255, 255, 255)
-BLACK = (0, 0, 0)
-BLUE = (0, 0, 255)
+WHITE = (183, 249, 255)
+BLACK = (21, 18, 24)
+BLUE = (183, 249, 0)
 
 # Crear la ventana
 width, height = 800, 600
@@ -132,9 +132,10 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
     pygame.draw.circle(screen, BLUE, (int(x), int(y)), 50)
 
     # Mostrar la información dentro del nodo
-    product_name = font.render(f"{node.name}", True, WHITE)
-    product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, WHITE)
-    product_category = font.render(f"Catg: {node.category}", True, WHITE)
+    product_name = font.render(f"{node.name}", True, BLACK)
+    product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
+    product_category = font.render(f"Catg: {node.category}", True, BLACK)
+
 
     # Colocar los textos dentro del nodo
     screen.blit(product_name, (int(x) - 40, int(y) - 30))
@@ -156,16 +157,145 @@ input_category = ""
 step = 0  # Para controlar el paso de la inserción
 
 # Bucle principal del programa
+GRAY = (200, 200, 200)
+DARK_GRAY = (150, 150, 150)
+SCROLL_BAR_COLOR = (100, 100, 100)
+SCROLL_THUMB_COLOR = (80, 80, 80)
+
+# Lista de categorías disponibles (agregué más para demostrar el scroll)
+CATEGORIES = ['Lácteos', 'Bebidas', 'Carnes', 'Aseo', 'Frutas', 'Verduras',
+              'Snacks', 'Cereales', 'Panadería', 'Congelados']
+
+
+class ScrollBar:
+    def __init__(self, x, y, w, h, total_items, visible_items):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.thumb_rect = pygame.Rect(x, y, w, 30)  # 30 es el alto inicial del thumb
+        self.total_items = total_items
+        self.visible_items = visible_items
+        self.scroll_pos = 0
+        self.dragging = False
+        self.calculate_thumb_size()
+
+    def calculate_thumb_size(self):
+        # Calcula el tamaño del thumb basado en la proporción de items visibles
+        if self.total_items > self.visible_items:
+            thumb_height = max(20, (self.visible_items / self.total_items) * self.rect.height)
+            self.thumb_rect.height = thumb_height
+
+    def handle_event(self, event):
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.thumb_rect.collidepoint(event.pos):
+                self.dragging = True
+                return True
+        elif event.type == pygame.MOUSEBUTTONUP:
+            self.dragging = False
+        elif event.type == pygame.MOUSEMOTION and self.dragging:
+            _, rel_y = event.rel
+            self.thumb_rect.y = max(self.rect.y,
+                                    min(self.rect.bottom - self.thumb_rect.height,
+                                        self.thumb_rect.y + rel_y))
+            # Calcular la posición del scroll basado en la posición del thumb
+            scroll_range = self.total_items - self.visible_items
+            if scroll_range > 0:
+                self.scroll_pos = ((self.thumb_rect.y - self.rect.y) /
+                                   (self.rect.height - self.thumb_rect.height) * scroll_range)
+            return True
+        return False
+
+    def draw(self, surface):
+        pygame.draw.rect(surface, SCROLL_BAR_COLOR, self.rect)
+        pygame.draw.rect(surface, SCROLL_THUMB_COLOR, self.thumb_rect)
+
+
+class DropdownMenu:
+    def __init__(self, x, y, w, h, options):
+        self.rect = pygame.Rect(x, y, w, h)
+        self.options = options
+        self.active = False
+        self.selected = None
+        self.visible_items = 5  # Número de items visibles a la vez
+        self.option_height = h
+
+        # Crear los rectángulos para las opciones visibles
+        self.option_rects = []
+        for i in range(self.visible_items):
+            self.option_rects.append(pygame.Rect(x, y + (i + 1) * h, w - 15, h))  # -15 para dar espacio a la barra
+
+        # Crear la barra de desplazamiento
+        self.scrollbar = ScrollBar(x + w - 15, y + h, 15,
+                                   self.visible_items * h,
+                                   len(options), self.visible_items)
+
+    def draw(self, surface):
+        # Dibujar el botón principal
+        pygame.draw.rect(surface, GRAY, self.rect)
+        text = font.render(self.selected if self.selected else "Seleccionar categoría", True, BLACK)
+        surface.blit(text, (self.rect.x + 5, self.rect.y + 5))
+
+        # Si está activo, mostrar las opciones y la barra de desplazamiento
+        if self.active:
+            start_idx = int(self.scrollbar.scroll_pos)
+
+            # Dibujar el fondo del área desplegable
+            dropdown_rect = pygame.Rect(self.rect.x, self.rect.y + self.rect.height,
+                                        self.rect.width, self.visible_items * self.option_height)
+            pygame.draw.rect(surface, DARK_GRAY, dropdown_rect)
+
+            # Dibujar las opciones visibles
+            for i in range(self.visible_items):
+                option_idx = start_idx + i
+                if option_idx < len(self.options):
+                    pygame.draw.rect(surface, DARK_GRAY, self.option_rects[i])
+                    text = font.render(self.options[option_idx], True, BLACK)
+                    surface.blit(text, (self.option_rects[i].x + 5, self.option_rects[i].y + 5))
+
+            # Dibujar la barra de desplazamiento
+            self.scrollbar.draw(surface)
+
+    def handle_event(self, event):
+        if self.active:
+            # Manejar eventos de la barra de desplazamiento
+            if self.scrollbar.handle_event(event):
+                return False
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if self.rect.collidepoint(event.pos):
+                self.active = not self.active
+                return False
+            elif self.active:
+                # Calcular qué opción fue clickeada
+                for i, rect in enumerate(self.option_rects):
+                    if rect.collidepoint(event.pos):
+                        option_idx = int(self.scrollbar.scroll_pos) + i
+                        if option_idx < len(self.options):
+                            self.selected = self.options[option_idx]
+                            self.active = False
+                            return True
+
+        # Manejar el scroll con la rueda del mouse
+        elif event.type == pygame.MOUSEWHEEL and self.active:
+            self.scrollbar.scroll_pos = max(0, min(len(self.options) - self.visible_items,
+                                                   self.scrollbar.scroll_pos - event.y))
+            self.scrollbar.thumb_rect.y = (self.scrollbar.rect.y +
+                                           (self.scrollbar.scroll_pos / (len(self.options) - self.visible_items)) *
+                                           (self.scrollbar.rect.height - self.scrollbar.thumb_rect.height))
+
+        return False
+
+
+# [El resto del código permanece igual, solo asegúrate de usar la nueva versión del DropdownMenu]
+# Crear el menú desplegable con la nueva implementación
+dropdown = DropdownMenu(200, height - 90, 150, 25, CATEGORIES)
+
+# Modificar el bucle principal del programa:
 running = True
 while running:
-    # Rellena la pantalla de blanco
     screen.fill(WHITE)
 
-    # Dibujar el árbol centrado en la pantalla, con la raíz arriba
     if root:
         draw_tree(screen, root, width // 2, 50, 0, 0, max_depth)
 
-    # Mostrar las entradas de los datos del producto
     input_text = font.render(f"Paso {step + 1}:", True, BLACK)
     screen.blit(input_text, (10, height - 120))
 
@@ -192,19 +322,28 @@ while running:
     elif step == 4:
         instruction = font.render("Categoría:", True, BLACK)
         screen.blit(instruction, (10, height - 90))
-        input_display = font.render(input_category, True, BLACK)
-        screen.blit(input_display, (200, height - 90))
+        dropdown.draw(screen)
 
-    # Actualiza la pantalla
     pygame.display.flip()
 
-    # Manejo de eventos
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
 
-        # Captura el input del teclado para insertar un nuevo producto
-        if event.type == pygame.KEYDOWN:
+        if step == 4:
+            if dropdown.handle_event(event):
+                # Si se seleccionó una categoría, insertar el producto
+                root = avl_tree.insert(root, int(input_value), input_name,
+                                     int(input_quantity), float(input_price),
+                                     dropdown.selected)
+                # Limpiar las entradas
+                input_value = ""
+                input_name = ""
+                input_quantity = ""
+                input_price = ""
+                dropdown.selected = None
+                step = 0
+        elif event.type == pygame.KEYDOWN:
             if event.key == pygame.K_BACKSPACE:
                 if step == 0:
                     input_value = input_value[:-1]
@@ -214,8 +353,6 @@ while running:
                     input_quantity = input_quantity[:-1]
                 elif step == 3:
                     input_price = input_price[:-1]
-                elif step == 4:
-                    input_category = input_category[:-1]
             elif event.key == pygame.K_RETURN:
                 if step == 0 and input_value.isdigit():
                     step = 1
@@ -225,16 +362,6 @@ while running:
                     step = 3
                 elif step == 3 and input_price.replace(".", "", 1).isdigit():
                     step = 4
-                elif step == 4:
-                    root = avl_tree.insert(root, int(input_value), input_name, int(input_quantity), float(input_price),
-                                           input_category)
-                    # Limpiar las entradas después de insertar el producto
-                    input_value = ""
-                    input_name = ""
-                    input_quantity = ""
-                    input_price = ""
-                    input_category = ""
-                    step = 0
             else:
                 if step == 0:
                     input_value += event.unicode
@@ -244,8 +371,5 @@ while running:
                     input_quantity += event.unicode
                 elif step == 3:
                     input_price += event.unicode
-                elif step == 4:
-                    input_category += event.unicode
 
-# Salir de pygame
 pygame.quit()
