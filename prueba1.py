@@ -106,6 +106,20 @@ class AVLTree:
 
 
 # Función para dibujar el árbol
+CATEGORY_COLORS = {
+    'Lácteos': (173, 216, 230),    # Azul claro
+    'Bebidas': (144, 238, 144),    # Verde claro
+    'Carnes': (255, 182, 193),     # Rosa
+    'Aseo': (255, 255, 224),       # Amarillo claro
+    'Frutas': (255, 160, 122),     # Naranja claro
+    'Verduras': (152, 251, 152),   # Verde pastel
+    'Snacks': (255, 218, 185),     # Melocotón
+    'Cereales': (222, 184, 135),   # Marrón claro
+    'Panadería': (255, 222, 173),  # Beige
+    'Congelados': (176, 224, 230)  # Celeste
+}
+
+# Modificar la función draw_tree para usar los colores por categoría
 def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
     if node is None or depth > max_depth:
         return
@@ -128,14 +142,18 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
         pygame.draw.line(screen, BLACK, (x, y), (right_x, right_y), 2)
         draw_tree(screen, node.right, right_x, right_y, angle + 30, depth + 1, max_depth, length)
 
-    # Dibuja el nodo como un círculo más grande para contener todos los detalles
-    pygame.draw.circle(screen, BLUE, (int(x), int(y)), 50)
+    # Obtener el color basado en la categoría
+    node_color = CATEGORY_COLORS.get(node.category, BLUE)  # Si la categoría no existe, usa el color por defecto
+
+    # Dibuja el nodo como un círculo con el color de la categoría
+    pygame.draw.circle(screen, node_color, (int(x), int(y)), 50)
+    # Agregar un borde negro al círculo para mejor visibilidad
+    pygame.draw.circle(screen, BLACK, (int(x), int(y)), 50, 2)
 
     # Mostrar la información dentro del nodo
     product_name = font.render(f"{node.name}", True, BLACK)
     product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
     product_category = font.render(f"Catg: {node.category}", True, BLACK)
-
 
     # Colocar los textos dentro del nodo
     screen.blit(product_name, (int(x) - 40, int(y) - 30))
@@ -284,6 +302,23 @@ class DropdownMenu:
         return False
 
 
+def draw_color_legend(screen, x, y):
+    legend_title = font.render("Categorías:", True, BLACK)
+    screen.blit(legend_title, (x, y))
+
+    y_offset = 20
+    for category, color in CATEGORY_COLORS.items():
+        # Dibujar un pequeño rectángulo con el color de la categoría
+        pygame.draw.rect(screen, color, (x, y + y_offset, 20, 20))
+        pygame.draw.rect(screen, BLACK, (x, y + y_offset, 20, 20), 1)
+
+        # Dibujar el nombre de la categoría
+        category_text = font.render(category, True, BLACK)
+        screen.blit(category_text, (x + 30, y + y_offset))
+
+        y_offset += 25
+
+
 # [El resto del código permanece igual, solo asegúrate de usar la nueva versión del DropdownMenu]
 # Crear el menú desplegable con la nueva implementación
 dropdown = DropdownMenu(200, height - 90, 150, 25, CATEGORIES)
@@ -296,6 +331,8 @@ while running:
     if root:
         draw_tree(screen, root, width // 2, 50, 0, 0, max_depth)
 
+    # Dibujar la leyenda en la esquina superior derecha
+    draw_color_legend(screen, width - 100, 10)
     input_text = font.render(f"Paso {step + 1}:", True, BLACK)
     screen.blit(input_text, (10, height - 120))
 
