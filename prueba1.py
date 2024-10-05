@@ -352,33 +352,33 @@ while running:
         draw_tree(screen, root, (width // 2 - offset_x) / zoom, (50 - offset_y) / zoom, 0, 0, max_depth)
 
     # Crear el botón "Buscar precio" encima del botón "Categorías"
-    button_rect = pygame.Rect(width - 150, height - 240, 140, 40)
+    button_rect = pygame.Rect(width - 150, height - 260, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), button_rect)
     advanced_search_text = font.render("Buscar por criterios", True, WHITE)
-    screen.blit(advanced_search_text, (width - 140, height - 230))
+    screen.blit(advanced_search_text, (width - 140, height - 250))
 
-    button_rect = pygame.Rect(width - 150, height - 190, 140, 40)
+    button_rect = pygame.Rect(width - 150, height - 210, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), button_rect)
     price_search_text = font.render("Buscar por Precio", True, WHITE)
-    screen.blit(price_search_text, (width - 140, height - 180))
+    screen.blit(price_search_text, (width - 140, height - 200))
 
     # Crear el botón "Buscar por ID"
-    button_rect = pygame.Rect(width - 150, height - 140, 140, 40)
+    button_rect = pygame.Rect(width - 150, height - 160, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), button_rect)
     id_search_text = font.render("Buscar por ID", True, WHITE)
-    screen.blit(id_search_text, (width - 140, height - 130))
+    screen.blit(id_search_text, (width - 140, height - 150))
 
     # Crear el botón "Buscar por Categoría"
-    button_rect = pygame.Rect(width - 150, height - 90, 140, 40)
+    button_rect = pygame.Rect(width - 150, height - 110, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), button_rect)
     category_search_text = font.render("Buscar por Categoría", True, WHITE)
-    screen.blit(category_search_text, (width - 140, height - 80))
+    screen.blit(category_search_text, (width - 140, height - 100))
 
     # Crear el botón "Categorías"
-    button_rect = pygame.Rect(width - 150, height - 40, 140, 38)
+    button_rect = pygame.Rect(width - 150, height - 60, 140, 38)
     pygame.draw.rect(screen, (100, 100, 100), button_rect)
     categories_text = font.render("Categorías", True, WHITE)
-    screen.blit(categories_text, (width - 140, height - 30))
+    screen.blit(categories_text, (width - 140, height - 50))
 
     # Mostrar la leyenda de categorías en la esquina superior derecha
     if show_legend:
