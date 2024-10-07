@@ -11,19 +11,38 @@ pygame.init()
 WHITE = (255, 255, 255)
 BLACK = (0, 0, 0)
 BLUE = (183, 249, 0)
+RED = (255,0,0)
+GREEN = (0,180,0)
+
+# Función para dibujar el árbol
+CATEGORY_COLORS = {
+    'Lácteos': (249, 243, 122),
+    'Bebidas': (144, 238, 144),
+    'Carnes': (255, 182, 193),
+    'Aseo': (165, 209, 229),
+    'Frutas': (255, 160, 122),
+    'Verduras': (57, 188, 24),
+    'Snacks': (147, 152, 134),
+    'Cereales': (222, 184, 135),
+    'Panadería': (255, 222, 173),
+    'Congelados': (166, 156, 232),
+    'Huevos': (217, 128, 27),
+    'Embutidos': (254, 100, 100)
+}
 
 # Crear la ventana
-width, height = 800, 700
+width, height = 1320, 700
 screen = pygame.display.set_mode((width, height))
 dragging = False  # Indica si se está arrastrando el mouse
 zoom = 1.0  # Nivel de zoom inicial
 offset_x, offset_y = 0, 0
-pygame.display.set_caption("Árbol AVL en Pygame")
+pygame.display.set_caption("Proyecto Estructura De Datos - Arbol AVL")
+
 
 # Inicializa la fuente para el texto
 pygame.font.init()
-font_size = int(14 * zoom)
-font = pygame.font.SysFont('Arial', font_size)
+font_size = int(13 * zoom)
+font = pygame.font.SysFont('Microsoft YaHei UI', font_size)
 
 
 # Clase para representar un nodo del árbol
@@ -37,7 +56,10 @@ class TreeNode:
         self.left = None
         self.right = None
         self.height = 1
+        self.in_stock = quantity > 0  # Nueva propiedad
 
+    def update_stock_status(self):
+        self.in_stock = self.quantity > 0
 
 class PriceSearchPopup:
     def __init__(self, manager, window_surface, avl_tree, root):
@@ -46,9 +68,7 @@ class PriceSearchPopup:
         self.avl_tree = avl_tree
         self.root = root
         self.is_active = True
-        self.focused_entry = None
 
-        # Crear la ventana con un botón de cierre
         self.popup_window = pygame_gui.elements.UIWindow(
             pygame.Rect(50, 50, 500, 300),
             self.manager,
@@ -56,12 +76,14 @@ class PriceSearchPopup:
             object_id="#price_search_window",
             resizable=False
         )
+
         self.min_price_label = pygame_gui.elements.UILabel(
             relative_rect=pygame.Rect(10, 10, 100, 30),
             text="Precio Mínimo:",
             manager=self.manager,
             container=self.popup_window
         )
+
         self.min_price_entry = pygame_gui.elements.UITextEntryLine(
             relative_rect=pygame.Rect(120, 10, 100, 30),
             manager=self.manager,
@@ -98,116 +120,34 @@ class PriceSearchPopup:
     def handle_event(self, event):
         if event.type == pygame_gui.UI_WINDOW_CLOSE:
             if event.ui_element == self.popup_window:
-                self.cleanup()
+                self.is_active = False
                 return True
-
         elif event.type == pygame_gui.UI_BUTTON_PRESSED:
             if event.ui_element == self.search_button:
                 self.perform_search()
-
-        elif event.type == pygame_gui.UI_TEXT_ENTRY_FINISHED:
-            if event.ui_element in [self.min_price_entry, self.max_price_entry]:
-                self.focused_entry = event.ui_element
-
         return False
-
-    def cleanup(self):
-        """Limpia los recursos de la ventana"""
-        self.is_active = False
-        self.popup_window.kill()
-        self.min_price_entry = None
-        self.max_price_entry = None
-        self.search_button = None
-        self.results_textbox = None
 
     def perform_search(self):
         try:
             min_price = float(self.min_price_entry.get_text())
             max_price = float(self.max_price_entry.get_text())
-
-            if min_price > max_price:
-                min_price, max_price = max_price, min_price
-
-            search_results = []
-            self.avl_tree.search_by_price_range(self.root, min_price, max_price, search_results)
-
-            if search_results:
+            
+            results = []
+            self.avl_tree.search_by_price_range(self.root, min_price, max_price, results)
+            
+            if results:
                 result_text = "<br>".join([
-                    f"ID: {r.value}, Nombre: {r.name}, Precio: {r.price}, Cantidad: {r.quantity}, Categoría: {r.category}"
-                    for r in search_results
+                    f"ID: {r.value}, Nombre: {r.name}, Precio: ${r.price:.2f}, Cantidad: {r.quantity}, Categoría: {r.category}"
+                    for r in results
                 ])
             else:
-                result_text = "No se encontraron resultados."
-
+                result_text = f"No se encontraron productos en el rango de precios ${min_price:.2f} - ${max_price:.2f}."
+            
             self.results_textbox.html_text = result_text
             self.results_textbox.rebuild()
         except ValueError:
             self.results_textbox.html_text = "Por favor, ingrese valores numéricos válidos para los precios."
             self.results_textbox.rebuild()
-
-
-class IdSearchPopup:
-    def __init__(self, manager, window_surface, avl_tree, root):
-        self.manager = manager
-        self.window_surface = window_surface
-        self.avl_tree = avl_tree
-        self.root = root
-
-        self.popup_window = pygame_gui.elements.UIWindow(
-            pygame.Rect(50, 50, 500, 200),
-            self.manager,
-            window_display_title="Búsqueda por ID",
-            object_id="#id_search_window"
-        )
-
-        self.id_label = pygame_gui.elements.UILabel(
-            relative_rect=pygame.Rect(10, 10, 100, 30),
-            text="ID del Producto:",
-            manager=self.manager,
-            container=self.popup_window
-        )
-
-        self.id_entry = pygame_gui.elements.UITextEntryLine(
-            relative_rect=pygame.Rect(120, 10, 100, 30),
-            manager=self.manager,
-            container=self.popup_window
-        )
-
-        self.search_button = pygame_gui.elements.UIButton(
-            relative_rect=pygame.Rect(10, 50, 100, 30),
-            text="Buscar",
-            manager=self.manager,
-            container=self.popup_window
-        )
-
-        self.results_textbox = pygame_gui.elements.UITextBox(
-            relative_rect=pygame.Rect(10, 90, 480, 100),
-            html_text="Los resultados se mostrarán aquí.",
-            manager=self.manager,
-            container=self.popup_window
-        )
-
-    def handle_event(self, event):
-        if event.type == pygame_gui.UI_BUTTON_PRESSED:
-            if event.ui_element == self.search_button:
-                self.perform_search()
-
-    def perform_search(self):
-        try:
-            id_to_search = int(self.id_entry.get_text())
-            result = self.avl_tree.search_by_id(self.root, id_to_search)
-
-            if result:
-                result_text = f"ID: {result.value}, Nombre: {result.name}, Precio: {result.price}, Cantidad: {result.quantity}, Categoría: {result.category}"
-            else:
-                result_text = "No se encontró ningún producto con ese ID."
-
-            self.results_textbox.html_text = result_text
-            self.results_textbox.rebuild()
-        except ValueError:
-            self.results_textbox.html_text = "Por favor, ingrese un ID válido (número entero)."
-            self.results_textbox.rebuild()
-
 
 # Clase para manejar un árbol AVL
 class AVLTree:
@@ -281,9 +221,7 @@ class AVLTree:
         return node
 
     def search_by_id(self, node, id):
-        if node is None:
-            return None
-        if id == node.value:
+        if node is None or node.value == id:
             return node
         if id < node.value:
             return self.search_by_id(node.left, id)
@@ -299,20 +237,118 @@ class AVLTree:
         if node.price < max_price:
             self.search_by_price_range(node.right, min_price, max_price, results)
 
+    def search_by_criteria(self, node, min_price, max_price, category, results):
+        if node is None:
+            return
 
-# Función para dibujar el árbol
-CATEGORY_COLORS = {
-    'Lácteos': (249, 243, 122),
-    'Bebidas': (144, 238, 144),
-    'Carnes': (255, 182, 193),
-    'Aseo': (165, 209, 229),
-    'Frutas': (255, 160, 122),
-    'Verduras': (152, 251, 152),
-    'Snacks': (255, 218, 185),
-    'Cereales': (222, 184, 135),
-    'Panadería': (255, 222, 173),
-    'Congelados': (166, 156, 232)
-}
+        # Búsqueda en orden (in-order traversal)
+        self.search_by_criteria(node.left, min_price, max_price, category, results)
+
+        if min_price <= node.price <= max_price:
+            if category == "Todas" or category == node.category:
+                results.append(node)
+
+        self.search_by_criteria(node.right, min_price, max_price, category, results)
+        
+    def update_product(self, node, id, new_quantity, new_price):
+        if node is None:
+            return None
+
+        if id < node.value:
+            node.left = self.update_product(node.left, id, new_quantity, new_price)
+        elif id > node.value:
+            node.right = self.update_product(node.right, id, new_quantity, new_price)
+        else:
+            # Encontramos el nodo, actualizamos los valores
+            node.quantity = new_quantity
+            node.price = new_price
+        return node     
+
+
+class CategoryLegendButton:
+    def __init__(self, x, y, width, height):
+        self.rect = pygame.Rect(x, y, width, height)
+        self.active = False
+
+    def handle_click(self, pos):
+        if self.rect.collidepoint(pos):
+            self.active = not self.active
+            return True
+        return False
+
+    def draw(self, screen, font):
+        pygame.draw.rect(screen, (100, 100, 100), self.rect)
+        text = font.render("Categorías", True, WHITE)
+        screen.blit(text, (self.rect.x + 10, self.rect.y + 10))
+
+
+class IdSearchPopup:
+    def __init__(self, manager, window_surface, avl_tree, root):
+        self.manager = manager
+        self.window_surface = window_surface
+        self.avl_tree = avl_tree
+        self.root = root
+        self.is_active = True
+
+        self.popup_window = pygame_gui.elements.UIWindow(
+            pygame.Rect(50, 50, 400, 300),
+            self.manager,
+            window_display_title="Búsqueda por ID",
+            object_id="#id_search_window"
+        )
+
+        self.id_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 10, 100, 30),
+            text="ID del Producto:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.id_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(120, 10, 100, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.search_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(10, 50, 100, 30),
+            text="Buscar",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.results_textbox = pygame_gui.elements.UITextBox(
+            relative_rect=pygame.Rect(10, 90, 380, 200),
+            html_text="Los resultados se mostrarán aquí.",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+    def handle_event(self, event):
+        if event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.popup_window:
+                self.is_active = False
+                return True
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.search_button:
+                self.perform_search()
+        return False
+
+    def perform_search(self):
+        try:
+            id_to_search = int(self.id_entry.get_text())
+            result = self.avl_tree.search_by_id(self.root, id_to_search)
+
+            if result:
+                result_text = f"ID: {result.value}, Nombre: {result.name}, Precio: {result.price}, Cantidad: {result.quantity}, Categoría: {result.category}"
+            else:
+                result_text = "No se encontró ningún producto con ese ID."
+
+            self.results_textbox.html_text = result_text
+            self.results_textbox.rebuild()
+        except ValueError:
+            self.results_textbox.html_text = "Por favor, ingrese un ID válido (número entero)."
+            self.results_textbox.rebuild()
 
 zoom = 1
 offset_x = 0
@@ -354,6 +390,9 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
         draw_tree(screen, node.right, right_x, right_y, angle + 30, depth + 1, max_depth, length)
     # Obtener el color basado en la categoría
     node_color = CATEGORY_COLORS.get(node.category, BLUE)  # Si la categoría no existe, usa el color por defecto
+    
+    if not node.in_stock:
+        node_color = tuple(max(0, c - 100) for c in node_color) 
 
     # Dibuja el nodo como un círculo con el color de la categoría
     pygame.draw.circle(screen, node_color, (int(x * zoom + offset_x), int(y * zoom + offset_y)), int(50 * zoom))
@@ -363,12 +402,18 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
     product_name = font.render(f"{node.name}", True, BLACK)
     product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
     product_category = font.render(f"Catg: {node.category}", True, BLACK)
+    
+    product_name = font.render(f"{node.name}", True, BLACK)
+    product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
+    product_category = font.render(f"Catg: {node.category}", True, BLACK)
+    stock_status = font.render("En stock" if node.in_stock else "Agotado", True, RED if not node.in_stock else GREEN)
 
     # Colocar los textos dentro del nodo
     text_offset_x = 40 * zoom
     screen.blit(product_name, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) - 30 * zoom))
     screen.blit(product_details, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) - 10 * zoom))
     screen.blit(product_category, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) + 10 * zoom))
+    screen.blit(stock_status, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) + 30 * zoom))
 
 
 # Crear y llenar el árbol AVL
@@ -392,8 +437,339 @@ SCROLL_THUMB_COLOR = (80, 80, 80)
 
 # Lista de categorías disponibles (agregué más para demostrar el scroll)
 CATEGORIES = ['Lácteos', 'Bebidas', 'Carnes', 'Aseo', 'Frutas', 'Verduras',
-              'Snacks', 'Cereales', 'Panadería', 'Congelados']
+              'Snacks', 'Cereales', 'Panadería', 'Congelados', 'Huevos', 'Embutidos']
 
+
+class AdvancedSearchPopup:
+    def __init__(self, manager, window_surface, avl_tree, root):
+        self.manager = manager
+        self.window_surface = window_surface
+        self.avl_tree = avl_tree
+        self.root = root
+        self.is_active = True
+
+        # Crear ventana principal
+        self.popup_window = pygame_gui.elements.UIWindow(
+            pygame.Rect(50, 50, 500, 400),
+            self.manager,
+            window_display_title="Búsqueda Avanzada",
+            object_id="#advanced_search_window"
+        )
+
+        # Crear elementos de la interfaz
+        self._create_ui_elements()
+
+    def _create_ui_elements(self):
+        # Precio mínimo
+        self.min_price_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 10, 100, 30),
+            text="Precio Mínimo:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+        self.min_price_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(120, 10, 100, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        # Precio máximo
+        self.max_price_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 50, 100, 30),
+            text="Precio Máximo:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+        self.max_price_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(120, 50, 100, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        # Categoría
+        self.category_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 90, 100, 30),
+            text="Categoría:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        # Agregar opción "Todas" al inicio de las categorías
+        categories_with_all = ['Todas'] + list(CATEGORY_COLORS.keys())
+        self.category_dropdown = pygame_gui.elements.UIDropDownMenu(
+            options_list=categories_with_all,
+            starting_option=categories_with_all[0],
+            relative_rect=pygame.Rect(120, 90, 200, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        # Botón de búsqueda
+        self.search_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(10, 130, 100, 30),
+            text="Buscar",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        # Área de resultados
+        self.results_textbox = pygame_gui.elements.UITextBox(
+            relative_rect=pygame.Rect(10, 170, 480, 220),
+            html_text="Los resultados se mostrarán aquí.",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+    def handle_event(self, event):
+        if event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.popup_window:
+                self.cleanup()
+                return True
+
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.search_button:
+                self.perform_search()
+
+        return False
+
+    def cleanup(self):
+        self.is_active = False
+        self.popup_window.kill()
+
+    def perform_search(self):
+        try:
+            # Obtener valores de los campos
+            min_price_text = self.min_price_entry.get_text().strip()
+            max_price_text = self.max_price_entry.get_text().strip()
+
+            # Convertir precios a float, usar valores extremos si están vacíos
+            min_price = float(min_price_text) if min_price_text else float('-inf')
+            max_price = float(max_price_text) if max_price_text else float('inf')
+
+            # Asegurarse de que min_price <= max_price
+            if min_price > max_price:
+                min_price, max_price = max_price, min_price
+
+            # Obtener categoría seleccionada
+            category = self.category_dropdown.selected_option
+
+            # Realizar búsqueda
+            results = []
+            self.avl_tree.search_by_criteria(self.root, min_price, max_price, category, results)
+
+            # Mostrar resultados
+            if results:
+                result_text = "<br>".join([
+                    f"ID: {r.value}<br>"
+                    f"Nombre: {r.name}<br>"
+                    f"Precio: ${r.price:.2f}<br>"
+                    f"Cantidad: {r.quantity}<br>"
+                    f"Categoría: {r.category}<br>"
+                    f"-----------------"
+                    for r in results
+                ])
+            else:
+                result_text = "No se encontraron productos que coincidan con los criterios de búsqueda."
+
+            self.results_textbox.html_text = result_text
+            self.results_textbox.rebuild()
+
+        except ValueError as e:
+            self.results_textbox.html_text = "Error: Por favor, ingrese valores numéricos válidos para los precios."
+            self.results_textbox.rebuild()
+        except Exception as e:
+            self.results_textbox.html_text = f"Error: {str(e)}"
+            self.results_textbox.rebuild()
+class CategorySearchPopup:
+    def __init__(self, manager, window_surface, avl_tree, root):
+        self.manager = manager
+        self.window_surface = window_surface
+        self.avl_tree = avl_tree
+        self.root = root
+        self.is_active = True
+
+        self.popup_window = pygame_gui.elements.UIWindow(
+            pygame.Rect(50, 50, 400, 300),
+            self.manager,
+            window_display_title="Búsqueda por Categoría",
+            object_id="#category_search_window"
+        )
+
+        self.category_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 10, 100, 30),
+            text="Categoría:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.category_dropdown = pygame_gui.elements.UIDropDownMenu(
+            options_list=list(CATEGORY_COLORS.keys()),
+            starting_option=list(CATEGORY_COLORS.keys())[0],
+            relative_rect=pygame.Rect(120, 10, 200, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.search_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(10, 50, 100, 30),
+            text="Buscar",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.results_textbox = pygame_gui.elements.UITextBox(
+            relative_rect=pygame.Rect(10, 90, 380, 200),
+            html_text="Los resultados se mostrarán aquí.",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+    def handle_event(self, event):
+        if event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.popup_window:
+                self.is_active = False
+                return True
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.search_button:
+                self.perform_search()
+        return False
+
+    def perform_search(self):
+        selected_category = self.category_dropdown.selected_option
+        results = []
+        self.search_by_category(self.root, selected_category, results)
+
+        if results:
+            result_text = "<br>".join([
+                f"ID: {r.value}, Nombre: {r.name}, Precio: {r.price}, Cantidad: {r.quantity}"
+                for r in results
+            ])
+        else:
+            result_text = f"No se encontraron productos en la categoría {selected_category}."
+
+        self.results_textbox.html_text = result_text
+        self.results_textbox.rebuild()
+
+    def search_by_category(self, node, category, results):
+        if node is None:
+            return
+        if node.category == category:
+            results.append(node)
+        self.search_by_category(node.left, category, results)
+        self.search_by_category(node.right, category, results)
+
+    def perform_search(self):
+        selected_category = self.category_dropdown.selected_option
+        results = []
+        self.search_by_category(self.root, selected_category, results)
+
+        if results:
+            result_text = "<br>".join([
+                f"ID: {r.value}, Nombre: {r.name}, Precio: ${r.price:.2f}, Cantidad: {r.quantity}"
+                for r in results
+            ])
+        else:
+            result_text = f"No se encontraron productos en la categoría {selected_category}."
+
+        self.results_textbox.html_text = result_text
+        self.results_textbox.rebuild()
+        
+        
+class UpdateProductPopup:
+    def __init__(self, manager, window_surface, avl_tree, root):
+        self.manager = manager
+        self.window_surface = window_surface
+        self.avl_tree = avl_tree
+        self.root = root
+        self.is_active = True
+
+        self.popup_window = pygame_gui.elements.UIWindow(
+            pygame.Rect(50, 50, 400, 300),
+            self.manager,
+            window_display_title="Actualizar Producto",
+            object_id="#update_product_window"
+        )
+
+        self.id_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 10, 100, 30),
+            text="ID del Producto:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.id_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(120, 10, 100, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.quantity_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 50, 100, 30),
+            text="Nueva Cantidad:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.quantity_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(120, 50, 100, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.price_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 90, 100, 30),
+            text="Nuevo Precio:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.price_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(120, 90, 100, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.update_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(10, 130, 100, 30),
+            text="Actualizar",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.result_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 170, 380, 30),
+            text="",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+    def handle_event(self, event):
+        if event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.popup_window:
+                self.is_active = False
+                return True
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.update_button:
+                self.update_product()
+        return False
+
+    def update_product(self):
+        try:
+            product_id = int(self.id_entry.get_text())
+            new_quantity = int(self.quantity_entry.get_text())
+            new_price = float(self.price_entry.get_text())
+
+            node = self.avl_tree.search_by_id(self.root, product_id)
+            if node:
+                node.quantity = new_quantity
+                node.price = new_price
+                node.in_stock = new_quantity > 0  # Actualizar el estado de stock
+                status = "en stock" if node.in_stock else "agotado"
+                self.result_label.set_text(f"Producto actualizado: ID {product_id}, {status}")
+            else:
+                self.result_label.set_text(f"No se encontró el producto con ID {product_id}")
+        except ValueError:
+            self.result_label.set_text("Error: Ingrese valores válidos")  
 
 class ScrollBar:
     def __init__(self, x, y, w, h, total_items, visible_items):
@@ -530,7 +906,7 @@ def draw_color_legend(screen, x, y):
 
 
 # Crear el menú desplegable con la nueva implementación
-dropdown = DropdownMenu(200, height - 90, 150, 25, CATEGORIES)
+dropdown = DropdownMenu(200, height - 120, 150, 25, CATEGORIES)
 show_legend = False
 
 # Modificar el bucle principal del programa:
@@ -538,29 +914,31 @@ running = True
 manager = pygame_gui.UIManager((width, height))
 price_search_popup = None
 id_search_popup = None
+advanced_search_popup = None
+category_search_popup = None
+update_product_popup = None
 searching_by_id = False
 searching_by_price = False
 id_to_search = ""
 search_results = []
-
+category_button = CategoryLegendButton(width - 150, height - 60, 140, 38)
+update_product_button = pygame.Rect(width - 150, height - 310, 140, 40)
 clock = pygame.time.Clock()
 
 while running:
     timedelta = clock.tick(60) / 1000.0
-
     screen.fill(WHITE)
 
     # Dibujar el árbol
     if root:
         draw_tree(screen, root, (width // 2 - offset_x) / zoom, (50 - offset_y) / zoom, 0, 0, max_depth)
 
-    # Crear el botón "Buscar precio" encima del botón "Categorías"
-    button_rect = pygame.Rect(width - 150, height - 260, 140, 40)
-    pygame.draw.rect(screen, (100, 100, 100), button_rect)
-    advanced_search_text = font.render("Buscar por criterios", True, WHITE)
+    # Dibujar botones de búsqueda
+    advanced_search_button = pygame.Rect(width - 150, height - 260, 140, 40)
+    pygame.draw.rect(screen, (100, 100, 100), advanced_search_button)
+    advanced_search_text = font.render("Búsqueda Avanzada", True, WHITE)
     screen.blit(advanced_search_text, (width - 140, height - 250))
 
-    # Crear botones para búsquedas
     price_search_button = pygame.Rect(width - 150, height - 210, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), price_search_button)
     price_search_text = font.render("Buscar por Precio", True, WHITE)
@@ -571,23 +949,24 @@ while running:
     id_search_text = font.render("Buscar por ID", True, WHITE)
     screen.blit(id_search_text, (width - 140, height - 150))
 
-    # Crear el botón "Buscar por Categoría"
     button_rect = pygame.Rect(width - 150, height - 110, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), button_rect)
     category_search_text = font.render("Buscar por Categoría", True, WHITE)
     screen.blit(category_search_text, (width - 140, height - 100))
 
-    # Crear el botón "Categorías"
-    button_rect = pygame.Rect(width - 150, height - 60, 140, 38)
-    pygame.draw.rect(screen, (100, 100, 100), button_rect)
-    categories_text = font.render("Categorías", True, WHITE)
-    screen.blit(categories_text, (width - 140, height - 50))
+    # Dibujar botón de actualización de producto
+    pygame.draw.rect(screen, (100, 100, 100), update_product_button)
+    update_product_text = font.render("Actualizar Producto", True, WHITE)
+    screen.blit(update_product_text, (width - 140, height - 300))
+    
+    # Dibujar botón de categorías
+    category_button.draw(screen, font)
 
-    # Mostrar la leyenda de categorías en la esquina superior derecha
-    if show_legend:
-        draw_color_legend(screen, width - 200, 20)  # Cambié la posición a la parte superior derecha
+    # Mostrar la leyenda si está activa
+    if category_button.active:
+        draw_color_legend(screen, width - 110, 20)
 
-    # Dibujar instrucciones de inserción de productos
+    # Dibujar instrucciones de inserción
     if step == 0:
         instruction = font.render("ID del producto:", True, BLACK)
         screen.blit(instruction, (10, height - 90))
@@ -615,102 +994,108 @@ while running:
 
     manager.update(timedelta)
     manager.draw_ui(screen)
-
     pygame.display.flip()
 
     # Manejo de eventos
     for event in pygame.event.get():
-        manager.process_events(event)
         if event.type == pygame.QUIT:
             running = False
-        elif event.type == pygame.MOUSEBUTTONDOWN:
-            if id_search_button.collidepoint(event.pos):
-                searching_by_id = True
-                searching_by_price = False
-                id_to_search = ""
-                search_results = []
+
+        # Procesar eventos de la interfaz de usuario
+        manager.process_events(event)
+
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            # Manejo del botón de categorías
+            if category_button.handle_click(event.pos):
+                continue
+
+            # Manejo de botones de búsqueda
+            if advanced_search_button.collidepoint(event.pos):
+                if advanced_search_popup is None or not advanced_search_popup.is_active:
+                    advanced_search_popup = AdvancedSearchPopup(manager, screen, avl_tree, root)
             elif price_search_button.collidepoint(event.pos):
                 if price_search_popup is None or not price_search_popup.is_active:
                     price_search_popup = PriceSearchPopup(manager, screen, avl_tree, root)
             elif id_search_button.collidepoint(event.pos):
-                if id_search_popup is None:
+                if id_search_popup is None or not id_search_popup.is_active:
                     id_search_popup = IdSearchPopup(manager, screen, avl_tree, root)
-            elif button_rect.collidepoint(event.pos):
-                show_legend = not show_legend
+            elif button_rect.collidepoint(event.pos):  # button_rect es el rectángulo del botón "Buscar por Categoría"
+                if category_search_popup is None or not category_search_popup.is_active:
+                    category_search_popup = CategorySearchPopup(manager, screen, avl_tree, root)       
+            elif update_product_button.collidepoint(event.pos):
+                if update_product_popup is None or not update_product_popup.is_active:
+                    update_product_popup = UpdateProductPopup(manager, screen, avl_tree, root)             
 
+        # Manejo de eventos de las ventanas emergentes
         if price_search_popup and price_search_popup.is_active:
             if price_search_popup.handle_event(event):
                 price_search_popup = None
-        if id_search_popup:
-            id_search_popup.handle_event(event)
-        elif event.type == pygame.KEYDOWN:
-            if not (price_search_popup and price_search_popup.is_active):
-                if searching_by_id:
-                    if event.key == pygame.K_RETURN:
-                        if id_to_search.isdigit():
-                            result = avl_tree.search_by_id(root, int(id_to_search))
-                            if result:
-                                search_results = [result]
-                            else:
-                                search_results = []
-                        searching_by_id = False
-                    elif event.key == pygame.K_BACKSPACE:
-                        id_to_search = id_to_search[:-1]
-                    else:
-                        id_to_search += event.unicode
-                else:
-                    if event.key == pygame.K_BACKSPACE:
-                        if step == 0:
-                            input_value = input_value[:-1]
-                        elif step == 1:
-                            input_name = input_name[:-1]
-                        elif step == 2:
-                            input_quantity = input_quantity[:-1]
-                        elif step == 3:
-                            input_price = input_price[:-1]
-                    elif event.key == pygame.K_RETURN:
-                        if step == 0 and input_value.isdigit():
-                            step = 1
-                        elif step == 1 and input_name:
-                            step = 2
-                        elif step == 2 and input_quantity.isdigit():
-                            step = 3
-                        elif step == 3 and input_price.replace(".", "", 1).isdigit():
-                            step = 4
-                        elif step == 4 and dropdown.selected:
-                            # Insertar el nodo
-                            root = avl_tree.insert(root, int(input_value), input_name, int(input_quantity),
-                                                   float(input_price), dropdown.selected)
+        if id_search_popup and id_search_popup.is_active:
+            if id_search_popup.handle_event(event):
+                id_search_popup = None
+        if advanced_search_popup and advanced_search_popup.is_active:
+            if advanced_search_popup.handle_event(event):
+                advanced_search_popup = None
+        if category_search_popup and category_search_popup.is_active:
+            if category_search_popup.handle_event(event):
+                category_search_popup = None  
+        if update_product_popup and update_product_popup.is_active:
+            if update_product_popup.handle_event(event):
+                update_product_popup = None              
 
-                            # Limpiar las entradas
-                            input_value = ""
-                            input_name = ""
-                            input_quantity = ""
-                            input_price = ""
-                            dropdown.selected = None
-                            step = 0
-                    else:
-                        if step == 0:
-                            input_value += event.unicode
-                        elif step == 1:
-                            input_name += event.unicode
-                        elif step == 2:
-                            input_quantity += event.unicode
-                        elif step == 3:
-                            input_price += event.unicode
-        elif step == 4:
+        # Manejo de entrada de texto para inserción de nodos
+        if event.type == pygame.KEYDOWN and not (
+                (price_search_popup and price_search_popup.is_active) or
+                (id_search_popup and id_search_popup.is_active) or
+                (advanced_search_popup and advanced_search_popup.is_active)
+        ):
+            if event.key == pygame.K_BACKSPACE:
+                if step == 0:
+                    input_value = input_value[:-1]
+                elif step == 1:
+                    input_name = input_name[:-1]
+                elif step == 2:
+                    input_quantity = input_quantity[:-1]
+                elif step == 3:
+                    input_price = input_price[:-1]
+            elif event.key == pygame.K_RETURN:
+                if step == 0 and input_value.isdigit():
+                    step = 1
+                elif step == 1 and input_name:
+                    step = 2
+                elif step == 2 and input_quantity.isdigit():
+                    step = 3
+                elif step == 3 and input_price.replace(".", "", 1).isdigit():
+                    step = 4
+                elif step == 4 and dropdown.selected:
+                    root = avl_tree.insert(root, int(input_value), input_name,
+                                           int(input_quantity), float(input_price),
+                                           dropdown.selected)
+                    input_value = ""
+                    input_name = ""
+                    input_quantity = ""
+                    input_price = ""
+                    dropdown.selected = None
+                    step = 0
+            else:
+                if step == 0:
+                    input_value += event.unicode
+                elif step == 1:
+                    input_name += event.unicode
+                elif step == 2:
+                    input_quantity += event.unicode
+                elif step == 3:
+                    input_price += event.unicode
+
+        # Manejo de eventos del dropdown
+        if step == 4:
             dropdown.handle_event(event)
 
-        # Manejo de desplazamiento
+        # Manejo del zoom
         if event.type == pygame.MOUSEBUTTONDOWN:
             if event.button == 4:  # Rueda hacia arriba
                 zoom *= 1.1
             elif event.button == 5:  # Rueda hacia abajo
                 zoom /= 1.1
 
-        manager.update(timedelta)
-        # ... resto del código de dibujo ...
-        manager.draw_ui(screen)
-
 pygame.quit()
-
