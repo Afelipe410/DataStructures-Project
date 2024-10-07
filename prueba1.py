@@ -226,6 +226,13 @@ class AVLTree:
         if id < node.value:
             return self.search_by_id(node.left, id)
         return self.search_by_id(node.right, id)
+    
+    def search_by_category(self, node, category, results):
+        if node is None:
+            return
+        if (node.category,node.category) == (category):
+            results.append(node)
+        self.search_by_category(node.left, category, results)
 
     def search_by_price_range(self, node, min_price, max_price, results):
         if node is None:
@@ -245,7 +252,7 @@ class AVLTree:
         self.search_by_criteria(node.left, min_price, max_price, category, results)
 
         if min_price <= node.price <= max_price:
-            if category == "Todas" or category == node.category:
+            if category == ("Todas","Todas") or category == (node.category, node.category):
                 results.append(node)
 
         self.search_by_criteria(node.right, min_price, max_price, category, results)
@@ -263,6 +270,76 @@ class AVLTree:
             node.quantity = new_quantity
             node.price = new_price
         return node     
+    
+    def get_min_value_node(self, node):
+        current = node
+        while current.left is not None:
+            current = current.left
+        return current
+
+    def delete_node(self, root, key):
+        if not root:
+            return root, None, []
+
+        animation_steps = []
+        deleted_node = None
+
+        if key < root.value:
+            root.left, deleted_node, left_steps = self.delete_node(root.left, key)
+            animation_steps.extend(left_steps)
+        elif key > root.value:
+            root.right, deleted_node, right_steps = self.delete_node(root.right, key)
+            animation_steps.extend(right_steps)
+        else:
+            deleted_node = root
+            animation_steps.append(("highlight", root, "red"))
+
+            if root.left is None:
+                animation_steps.append(("replace", root, root.right))
+                return root.right, deleted_node, animation_steps
+            elif root.right is None:
+                animation_steps.append(("replace", root, root.left))
+                return root.left, deleted_node, animation_steps
+
+            temp = self.get_min_value_node(root.right)
+            root.value = temp.value
+            root.name = temp.name
+            root.quantity = temp.quantity
+            root.price = temp.price
+            root.category = temp.category
+            animation_steps.append(("copy", temp, root))
+
+            root.right, _, right_steps = self.delete_node(root.right, temp.value)
+            animation_steps.extend(right_steps)
+
+        if root is None:
+            return root, deleted_node, animation_steps
+
+        root.height = 1 + max(self.get_height(root.left), self.get_height(root.right))
+        balance = self.get_balance(root)
+
+        # Casos de rotación
+        if balance > 1:
+            if self.get_balance(root.left) >= 0:
+                animation_steps.append(("rotate", root, "right"))
+                return self.rotate_right(root), deleted_node, animation_steps
+            else:
+                animation_steps.append(("rotate", root.left, "left"))
+                animation_steps.append(("rotate", root, "right"))
+                root.left = self.rotate_left(root.left)
+                return self.rotate_right(root), deleted_node, animation_steps
+
+        if balance < -1:
+            if self.get_balance(root.right) <= 0:
+                animation_steps.append(("rotate", root, "left"))
+                return self.rotate_left(root), deleted_node, animation_steps
+            else:
+                animation_steps.append(("rotate", root.right, "right"))
+                animation_steps.append(("rotate", root, "left"))
+                root.right = self.rotate_right(root.right)
+                return self.rotate_left(root), deleted_node, animation_steps
+
+        return root, deleted_node, animation_steps
 
 
 class CategoryLegendButton:
@@ -362,19 +439,15 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
     if node is None or depth > max_depth:
         return
 
-    # Ajustar la longitud de las ramas para cada nivel
-    branch_length = (length / (depth + 1)) * zoom  # Aplicar zoom
+    branch_length = (length / (depth + 1)) * zoom
 
-    # Calcular las posiciones de los hijos en diagonal
     left_x = x - branch_length * math.cos(math.radians(angle + 30))
     left_y = y + branch_length * math.sin(math.radians(angle + 30))
     right_x = x + branch_length * math.cos(math.radians(angle + 30))
     right_y = y + branch_length * math.sin(math.radians(angle + 30))
 
-    # Dibuja las líneas entre los nodos (las ramas)
     if node.left:
         line_thickness = max(1, int(2 * zoom))
-        # Escalar las posiciones de los nodos para que coincidan con el zoom
         pygame.draw.line(screen, BLACK,
                          (int(x * zoom + offset_x), int(y * zoom + offset_y)),
                          (int(left_x * zoom + offset_x), int(left_y * zoom + offset_y)),
@@ -388,13 +461,15 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
                          (int(right_x * zoom + offset_x), int(right_y * zoom + offset_y)),
                          line_thickness)
         draw_tree(screen, node.right, right_x, right_y, angle + 30, depth + 1, max_depth, length)
-    # Obtener el color basado en la categoría
-    node_color = CATEGORY_COLORS.get(node.category, BLUE)  # Si la categoría no existe, usa el color por defecto
-    
-    if not node.in_stock:
-        node_color = tuple(max(0, c - 100) for c in node_color) 
 
-    # Dibuja el nodo como un círculo con el color de la categoría
+    node_color = CATEGORY_COLORS.get(node.category, BLUE)
+    if not node.in_stock:
+        node_color = tuple(max(0, c - 100) for c in node_color)
+
+    # Dibujar el nodo resaltado si está siendo eliminado
+    if hasattr(node, 'highlight_color'):
+        pygame.draw.circle(screen, node.highlight_color, (int(x * zoom + offset_x), int(y * zoom + offset_y)), int(52 * zoom))
+    
     pygame.draw.circle(screen, node_color, (int(x * zoom + offset_x), int(y * zoom + offset_y)), int(50 * zoom))
     pygame.draw.circle(screen, BLACK, (int(x * zoom + offset_x), int(y * zoom + offset_y)), int(50 * zoom), 2)
 
@@ -402,6 +477,11 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
     product_name = font.render(f"{node.name}", True, BLACK)
     product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
     product_category = font.render(f"Catg: {node.category}", True, BLACK)
+    
+    product_name = font.render(f"{node.name}", True, BLACK)
+    product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
+    product_category = font.render(f"Catg: {node.category}", True, BLACK)
+    stock_status = font.render("En stock" if node.in_stock else "Agotado", True, RED if not node.in_stock else GREEN)
     
     product_name = font.render(f"{node.name}", True, BLACK)
     product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
@@ -580,6 +660,8 @@ class AdvancedSearchPopup:
         except Exception as e:
             self.results_textbox.html_text = f"Error: {str(e)}"
             self.results_textbox.rebuild()
+            
+            
 class CategorySearchPopup:
     def __init__(self, manager, window_surface, avl_tree, root):
         self.manager = manager
@@ -637,7 +719,7 @@ class CategorySearchPopup:
     def perform_search(self):
         selected_category = self.category_dropdown.selected_option
         results = []
-        self.search_by_category(self.root, selected_category, results)
+        self.avl_tree.search_by_category(self.root, selected_category, results)
 
         if results:
             result_text = "<br>".join([
@@ -650,31 +732,6 @@ class CategorySearchPopup:
         self.results_textbox.html_text = result_text
         self.results_textbox.rebuild()
 
-    def search_by_category(self, node, category, results):
-        if node is None:
-            return
-        if node.category == category:
-            results.append(node)
-        self.search_by_category(node.left, category, results)
-        self.search_by_category(node.right, category, results)
-
-    def perform_search(self):
-        selected_category = self.category_dropdown.selected_option
-        results = []
-        self.search_by_category(self.root, selected_category, results)
-
-        if results:
-            result_text = "<br>".join([
-                f"ID: {r.value}, Nombre: {r.name}, Precio: ${r.price:.2f}, Cantidad: {r.quantity}"
-                for r in results
-            ])
-        else:
-            result_text = f"No se encontraron productos en la categoría {selected_category}."
-
-        self.results_textbox.html_text = result_text
-        self.results_textbox.rebuild()
-        
-        
 class UpdateProductPopup:
     def __init__(self, manager, window_surface, avl_tree, root):
         self.manager = manager
@@ -920,6 +977,8 @@ update_product_popup = None
 searching_by_id = False
 searching_by_price = False
 id_to_search = ""
+deleting = False
+id_to_delete = ""
 search_results = []
 category_button = CategoryLegendButton(width - 150, height - 60, 140, 38)
 update_product_button = pygame.Rect(width - 150, height - 310, 140, 40)
@@ -932,7 +991,18 @@ while running:
     # Dibujar el árbol
     if root:
         draw_tree(screen, root, (width // 2 - offset_x) / zoom, (50 - offset_y) / zoom, 0, 0, max_depth)
-
+        
+    delete_button = pygame.Rect(width - 150, height - 360, 140, 40)
+    pygame.draw.rect(screen, (100, 100, 100), delete_button)
+    delete_text = font.render("Eliminar Producto", True, WHITE)
+    screen.blit(delete_text, (width - 140, height - 350))   
+    
+    if deleting:
+        delete_instruction = font.render("ID a eliminar:", True, BLACK)
+        screen.blit(delete_instruction, (10, height - 40))
+        delete_input = font.render(id_to_delete, True, BLACK)
+        screen.blit(delete_input, (200, height - 40))
+        
     # Dibujar botones de búsqueda
     advanced_search_button = pygame.Rect(width - 150, height - 260, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), advanced_search_button)
@@ -1000,7 +1070,23 @@ while running:
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
             running = False
+            
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if delete_button.collidepoint(event.pos):
+                deleting = True
 
+        if event.type == pygame.KEYDOWN and deleting:
+            if event.key == pygame.K_RETURN:
+                if id_to_delete.isdigit():
+                    id_to_delete_int = int(id_to_delete)
+                    new_root, deleted_node, animation_steps = avl_tree.delete_node(root, id_to_delete_int)
+                    id_to_delete = ""
+                    deleting = False
+            elif event.key == pygame.K_BACKSPACE:
+                id_to_delete = id_to_delete[:-1]
+            else:
+                id_to_delete += event.unicode    
+            
         # Procesar eventos de la interfaz de usuario
         manager.process_events(event)
 
