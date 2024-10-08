@@ -3,6 +3,7 @@ import math
 import sys
 import pygame_gui
 from datetime import timedelta
+import csv
 
 # Inicializa pygame
 pygame.init()
@@ -30,14 +31,22 @@ CATEGORY_COLORS = {
     'Embutidos': (254, 100, 100)
 }
 
+# Bucle principal del programa
+GRAY = (200, 200, 200)
+DARK_GRAY = (150, 150, 150)
+SCROLL_BAR_COLOR = (100, 100, 100)
+SCROLL_THUMB_COLOR = (80, 80, 80)
+
 # Crear la ventana
 width, height = 1320, 700
 screen = pygame.display.set_mode((width, height))
 dragging = False  # Indica si se está arrastrando el mouse
 zoom = 1.0  # Nivel de zoom inicial
 offset_x, offset_y = 0, 0
-pygame.display.set_caption("Proyecto Estructura De Datos - Arbol AVL")
+pygame.display.set_caption("Proyecto Estructura De Datos - Arbol AVL - Andrés Felipe Giraldo Rojas - Carlos Andrés Castillo García")
 
+background_image = pygame.image.load('background.jpg')  # Asegúrate de que 'background.jpg' existe
+background_image = pygame.transform.scale(background_image, (width, height))
 
 # Inicializa la fuente para el texto
 pygame.font.init()
@@ -340,8 +349,30 @@ class AVLTree:
                 return self.rotate_left(root), deleted_node, animation_steps
 
         return root, deleted_node, animation_steps
+    
+def save_tree_to_csv(root, filename):
+    def traverse(node):
+        if node:
+            yield [node.value, node.name, node.quantity, node.price, node.category]
+            yield from traverse(node.left)
+            yield from traverse(node.right)
 
+    with open(filename, 'w', newline='', encoding='utf-8') as file:
+        writer = csv.writer(file)
+        writer.writerow(['ID', 'Nombre', 'Cantidad', 'Precio', 'Categoría'])  # Encabezados
+        writer.writerows(traverse(root))
 
+def load_tree_from_csv(filename, avl_tree):
+    root = None
+    with open(filename, 'r', encoding='utf-8') as file:
+        reader = csv.reader(file)
+        next(reader)  # Saltar encabezados
+        for row in reader:
+            if len(row) == 5:
+                id, name, quantity, price, category = row
+                root = avl_tree.insert(root, int(id), name, int(quantity), float(price), category)
+    return root        
+        
 class CategoryLegendButton:
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
@@ -357,8 +388,7 @@ class CategoryLegendButton:
         pygame.draw.rect(screen, (100, 100, 100), self.rect)
         text = font.render("Categorías", True, WHITE)
         screen.blit(text, (self.rect.x + 10, self.rect.y + 10))
-
-
+           
 class IdSearchPopup:
     def __init__(self, manager, window_surface, avl_tree, root):
         self.manager = manager
@@ -466,34 +496,26 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
     if not node.in_stock:
         node_color = tuple(max(0, c - 100) for c in node_color)
 
-    # Dibujar el nodo resaltado si está siendo eliminado
     if hasattr(node, 'highlight_color'):
         pygame.draw.circle(screen, node.highlight_color, (int(x * zoom + offset_x), int(y * zoom + offset_y)), int(52 * zoom))
     
     pygame.draw.circle(screen, node_color, (int(x * zoom + offset_x), int(y * zoom + offset_y)), int(50 * zoom))
     pygame.draw.circle(screen, BLACK, (int(x * zoom + offset_x), int(y * zoom + offset_y)), int(50 * zoom), 2)
 
-    # Mostrar la información dentro del nodo
-    product_name = font.render(f"{node.name}", True, BLACK)
-    product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
-    product_category = font.render(f"Catg: {node.category}", True, BLACK)
-    
-    product_name = font.render(f"{node.name}", True, BLACK)
-    product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
-    product_category = font.render(f"Catg: {node.category}", True, BLACK)
-    stock_status = font.render("En stock" if node.in_stock else "Agotado", True, RED if not node.in_stock else GREEN)
-    
+    # Mostrar la información dentro del nodo    
+    id_text = font.render(f"ID: {node.value}", True, BLACK)
     product_name = font.render(f"{node.name}", True, BLACK)
     product_details = font.render(f"Cant: {node.quantity} $: {node.price}", True, BLACK)
     product_category = font.render(f"Catg: {node.category}", True, BLACK)
     stock_status = font.render("En stock" if node.in_stock else "Agotado", True, RED if not node.in_stock else GREEN)
 
     # Colocar los textos dentro del nodo
-    text_offset_x = 40 * zoom
-    screen.blit(product_name, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) - 30 * zoom))
-    screen.blit(product_details, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) - 10 * zoom))
-    screen.blit(product_category, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) + 10 * zoom))
-    screen.blit(stock_status, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) + 30 * zoom))
+    text_offset_x = 32 * zoom
+    screen.blit(id_text, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) - 42 * zoom))
+    screen.blit(product_name, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) - 22 * zoom))
+    screen.blit(product_details, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y)))
+    screen.blit(product_category, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) + 22 * zoom))
+    screen.blit(stock_status, (int(x * zoom + offset_x) - text_offset_x, int(y * zoom + offset_y) + 50 * zoom))
 
 
 # Crear y llenar el árbol AVL
@@ -508,12 +530,6 @@ input_quantity = ""
 input_price = ""
 input_category = ""
 step = 0  # Para controlar el paso de la inserción
-
-# Bucle principal del programa
-GRAY = (200, 200, 200)
-DARK_GRAY = (150, 150, 150)
-SCROLL_BAR_COLOR = (100, 100, 100)
-SCROLL_THUMB_COLOR = (80, 80, 80)
 
 # Lista de categorías disponibles (agregué más para demostrar el scroll)
 CATEGORIES = ['Lácteos', 'Bebidas', 'Carnes', 'Aseo', 'Frutas', 'Verduras',
@@ -953,7 +969,7 @@ def draw_color_legend(screen, x, y):
     for category, color in CATEGORY_COLORS.items():
         # Dibujar un pequeño rectángulo con el color de la categoría
         pygame.draw.rect(screen, color, (x, y + y_offset, 20, 20))
-        pygame.draw.rect(screen, BLACK, (x, y + y_offset, 20, 20), 1)
+        pygame.draw.rect(screen, BLACK, (x, y + y_offset, 20, 20), 2)
 
         # Dibujar el nombre de la categoría
         category_text = font.render(category, True, BLACK)
@@ -982,11 +998,14 @@ id_to_delete = ""
 search_results = []
 category_button = CategoryLegendButton(width - 150, height - 60, 140, 38)
 update_product_button = pygame.Rect(width - 150, height - 310, 140, 40)
+save_button = pygame.Rect(width - 150, height - 410, 140, 40)
+load_button = pygame.Rect(width - 150, height - 460, 140, 40)
 clock = pygame.time.Clock()
 
 while running:
     timedelta = clock.tick(60) / 1000.0
     screen.fill(WHITE)
+    screen.blit(background_image, (0, 0))
 
     # Dibujar el árbol
     if root:
@@ -1029,12 +1048,20 @@ while running:
     update_product_text = font.render("Actualizar Producto", True, WHITE)
     screen.blit(update_product_text, (width - 140, height - 300))
     
+    pygame.draw.rect(screen, (100, 100, 100), save_button)
+    save_text = font.render("Guardar Inventario", True, WHITE)
+    screen.blit(save_text, (width - 140, height - 400))
+
+    pygame.draw.rect(screen, (100, 100, 100), load_button)
+    load_text = font.render("Cargar Inventario", True, WHITE)
+    screen.blit(load_text, (width - 140, height - 450))
+    
     # Dibujar botón de categorías
     category_button.draw(screen, font)
 
     # Mostrar la leyenda si está activa
     if category_button.active:
-        draw_color_legend(screen, width - 110, 20)
+        draw_color_legend(screen, width - 1300, 10)
 
     # Dibujar instrucciones de inserción
     if step == 0:
@@ -1086,6 +1113,14 @@ while running:
                 id_to_delete = id_to_delete[:-1]
             else:
                 id_to_delete += event.unicode    
+                
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if save_button.collidepoint(event.pos):
+                save_tree_to_csv(root, 'inventario.csv')
+                print("Inventario guardado en 'inventario.csv'")
+            elif load_button.collidepoint(event.pos):
+                root = load_tree_from_csv('inventario.csv', avl_tree)
+                print("Inventario cargado desde 'inventario.csv'")        
             
         # Procesar eventos de la interfaz de usuario
         manager.process_events(event)
