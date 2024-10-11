@@ -21,14 +21,14 @@ CATEGORY_COLORS = {
     'Bebidas': (144, 238, 144),
     'Carnes': (255, 182, 193),
     'Aseo': (165, 209, 229),
-    'Frutas': (255, 160, 122),
-    'Verduras': (57, 188, 24),
+    'Frutas': (211, 161, 227),
+    'Verduras': (127, 191, 144),
     'Snacks': (147, 152, 134),
     'Cereales': (222, 184, 135),
     'Panadería': (255, 222, 173),
     'Congelados': (166, 156, 232),
-    'Huevos': (217, 128, 27),
-    'Embutidos': (254, 100, 100)
+    'Huevos': (245, 228, 215),
+    'Embutidos': (255, 160, 122)
 }
 
 # Bucle principal del programa
