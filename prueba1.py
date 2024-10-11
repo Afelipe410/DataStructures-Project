@@ -45,7 +45,7 @@ zoom = 1.0  # Nivel de zoom inicial
 offset_x, offset_y = 0, 0
 pygame.display.set_caption("Proyecto Estructura De Datos - Arbol AVL - Andrés Felipe Giraldo Rojas - Carlos Andrés Castillo García")
 
-background_image = pygame.image.load('background.jpg')  # Asegúrate de que 'background.jpg' existe
+background_image = pygame.image.load('./img/background.jpg')  # Asegúrate de que 'background.jpg' existe
 background_image = pygame.transform.scale(background_image, (width, height))
 
 # Inicializa la fuente para el texto
@@ -534,7 +534,6 @@ step = 0  # Para controlar el paso de la inserción
 # Lista de categorías disponibles (agregué más para demostrar el scroll)
 CATEGORIES = ['Lácteos', 'Bebidas', 'Carnes', 'Aseo', 'Frutas', 'Verduras',
               'Snacks', 'Cereales', 'Panadería', 'Congelados', 'Huevos', 'Embutidos']
-
 
 class AdvancedSearchPopup:
     def __init__(self, manager, window_surface, avl_tree, root):
