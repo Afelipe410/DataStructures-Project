@@ -239,19 +239,19 @@ class AVLTree:
     def search_by_category(self, node, category, results):
         if node is None:
             return
-        if (node.category,node.category) == (category):
+        if (node.category, node.category) == (category):
             results.append(node)
         self.search_by_category(node.left, category, results)
+        self.search_by_category(node.right, category, results)
+
 
     def search_by_price_range(self, node, min_price, max_price, results):
         if node is None:
             return
         if min_price <= node.price <= max_price:
             results.append(node)
-        if node.price > min_price:
-            self.search_by_price_range(node.left, min_price, max_price, results)
-        if node.price < max_price:
-            self.search_by_price_range(node.right, min_price, max_price, results)
+        self.search_by_price_range(node.left, min_price, max_price, results)
+        self.search_by_price_range(node.right, min_price, max_price, results)
 
     def search_by_criteria(self, node, min_price, max_price, category, results):
         if node is None:
@@ -285,7 +285,7 @@ class AVLTree:
         while current.left is not None:
             current = current.left
         return current
-
+    
     def delete_node(self, root, key):
         if not root:
             return root, None, []
@@ -349,7 +349,7 @@ class AVLTree:
                 return self.rotate_left(root), deleted_node, animation_steps
 
         return root, deleted_node, animation_steps
-    
+
 def save_tree_to_csv(root, filename):
     def traverse(node):
         if node:
@@ -371,7 +371,8 @@ def load_tree_from_csv(filename, avl_tree):
             if len(row) == 5:
                 id, name, quantity, price, category = row
                 root = avl_tree.insert(root, int(id), name, int(quantity), float(price), category)
-    return root        
+    return root    
+    
         
 class CategoryLegendButton:
     def __init__(self, x, y, width, height):
@@ -465,16 +466,16 @@ mouse_y = 0
 
 
 # Modificar la función draw_tree para usar los colores por categoría
-def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
+def draw_tree(screen, node, x, y, angle, depth, max_depth, length=500):
     if node is None or depth > max_depth:
         return
 
     branch_length = (length / (depth + 1)) * zoom
 
-    left_x = x - branch_length * math.cos(math.radians(angle + 30))
-    left_y = y + branch_length * math.sin(math.radians(angle + 30))
-    right_x = x + branch_length * math.cos(math.radians(angle + 30))
-    right_y = y + branch_length * math.sin(math.radians(angle + 30))
+    left_x = x - branch_length * math.cos(math.radians(angle + 15))
+    left_y = y + branch_length * math.sin(math.radians(angle + 15))
+    right_x = x + branch_length * math.cos(math.radians(angle + 15))
+    right_y = y + branch_length * math.sin(math.radians(angle + 15))
 
     if node.left:
         line_thickness = max(1, int(2 * zoom))
@@ -482,7 +483,7 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
                          (int(x * zoom + offset_x), int(y * zoom + offset_y)),
                          (int(left_x * zoom + offset_x), int(left_y * zoom + offset_y)),
                          line_thickness)
-        draw_tree(screen, node.left, left_x, left_y, angle + 30, depth + 1, max_depth, length)
+        draw_tree(screen, node.left, left_x, left_y, angle + 20, depth + 1, max_depth, length)
 
     if node.right:
         line_thickness = max(1, int(2 * zoom))
@@ -490,7 +491,7 @@ def draw_tree(screen, node, x, y, angle, depth, max_depth, length=300):
                          (int(x * zoom + offset_x), int(y * zoom + offset_y)),
                          (int(right_x * zoom + offset_x), int(right_y * zoom + offset_y)),
                          line_thickness)
-        draw_tree(screen, node.right, right_x, right_y, angle + 30, depth + 1, max_depth, length)
+        draw_tree(screen, node.right, right_x, right_y, angle + 20, depth + 1, max_depth, length)
 
     node_color = CATEGORY_COLORS.get(node.category, BLUE)
     if not node.in_stock:
@@ -884,6 +885,71 @@ class ScrollBar:
         pygame.draw.rect(surface, SCROLL_THUMB_COLOR, self.thumb_rect)
 
 
+
+class DeleteProductPopup:
+    def __init__(self, manager, window_surface, avl_tree, root):
+        self.manager = manager
+        self.window_surface = window_surface
+        self.avl_tree = avl_tree
+        self.root = root
+        self.is_active = True
+
+        self.popup_window = pygame_gui.elements.UIWindow(
+            pygame.Rect(50, 50, 400, 200),
+            self.manager,
+            window_display_title="Eliminar Producto",
+            object_id="#delete_product_window"
+        )
+
+        self.id_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 10, 100, 30),
+            text="ID del Producto:",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.id_entry = pygame_gui.elements.UITextEntryLine(
+            relative_rect=pygame.Rect(120, 10, 100, 30),
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.delete_button = pygame_gui.elements.UIButton(
+            relative_rect=pygame.Rect(10, 50, 100, 30),
+            text="Eliminar",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+        self.result_label = pygame_gui.elements.UILabel(
+            relative_rect=pygame.Rect(10, 90, 380, 30),
+            text="",
+            manager=self.manager,
+            container=self.popup_window
+        )
+
+    def handle_event(self, event):
+        if event.type == pygame_gui.UI_WINDOW_CLOSE:
+            if event.ui_element == self.popup_window:
+                self.is_active = False
+                return True
+        elif event.type == pygame_gui.UI_BUTTON_PRESSED:
+            if event.ui_element == self.delete_button:
+                self.delete_product()
+        return False
+
+    def delete_product(self):
+        try:
+            product_id = int(self.id_entry.get_text())
+            new_root, deleted_node, animation_steps = self.avl_tree.delete_node(self.root, product_id)
+            if deleted_node:
+                self.result_label.set_text(f"Producto con ID {product_id} eliminado.")
+                self.root = new_root  # Actualizar la raíz del árbol
+            else:
+                self.result_label.set_text(f"No se encontró el producto con ID {product_id}")
+        except ValueError:
+            self.result_label.set_text("Error: Ingrese un ID válido")
+            
 class DropdownMenu:
     def __init__(self, x, y, w, h, options):
         self.rect = pygame.Rect(x, y, w, h)
@@ -989,11 +1055,10 @@ id_search_popup = None
 advanced_search_popup = None
 category_search_popup = None
 update_product_popup = None
+delete_product_popup = None
 searching_by_id = False
 searching_by_price = False
 id_to_search = ""
-deleting = False
-id_to_delete = ""
 search_results = []
 category_button = CategoryLegendButton(width - 150, height - 60, 140, 38)
 update_product_button = pygame.Rect(width - 150, height - 310, 140, 40)
@@ -1014,12 +1079,6 @@ while running:
     pygame.draw.rect(screen, (100, 100, 100), delete_button)
     delete_text = font.render("Eliminar Producto", True, WHITE)
     screen.blit(delete_text, (width - 140, height - 350))   
-    
-    if deleting:
-        delete_instruction = font.render("ID a eliminar:", True, BLACK)
-        screen.blit(delete_instruction, (10, height - 40))
-        delete_input = font.render(id_to_delete, True, BLACK)
-        screen.blit(delete_input, (200, height - 40))
         
     # Dibujar botones de búsqueda
     advanced_search_button = pygame.Rect(width - 150, height - 260, 140, 40)
@@ -1095,23 +1154,7 @@ while running:
     # Manejo de eventos
     for event in pygame.event.get():
         if event.type == pygame.QUIT:
-            running = False
-            
-        if event.type == pygame.MOUSEBUTTONDOWN:
-            if delete_button.collidepoint(event.pos):
-                deleting = True
-
-        if event.type == pygame.KEYDOWN and deleting:
-            if event.key == pygame.K_RETURN:
-                if id_to_delete.isdigit():
-                    id_to_delete_int = int(id_to_delete)
-                    new_root, deleted_node, animation_steps = avl_tree.delete_node(root, id_to_delete_int)
-                    id_to_delete = ""
-                    deleting = False
-            elif event.key == pygame.K_BACKSPACE:
-                id_to_delete = id_to_delete[:-1]
-            else:
-                id_to_delete += event.unicode    
+            running = False 
                 
         if event.type == pygame.MOUSEBUTTONDOWN:
             if save_button.collidepoint(event.pos):
@@ -1123,6 +1166,12 @@ while running:
             
         # Procesar eventos de la interfaz de usuario
         manager.process_events(event)
+        
+        if event.type == pygame.MOUSEBUTTONDOWN:
+            if delete_button.collidepoint(event.pos):
+                if delete_product_popup is None or not delete_product_popup.is_active:
+                    delete_product_popup = DeleteProductPopup(manager, screen, avl_tree, root)
+
 
         if event.type == pygame.MOUSEBUTTONDOWN:
             # Manejo del botón de categorías
@@ -1161,7 +1210,10 @@ while running:
                 category_search_popup = None  
         if update_product_popup and update_product_popup.is_active:
             if update_product_popup.handle_event(event):
-                update_product_popup = None              
+                update_product_popup = None     
+        if delete_product_popup and delete_product_popup.is_active:
+            if delete_product_popup.handle_event(event):
+                delete_product_popup = None       
 
         # Manejo de entrada de texto para inserción de nodos
         if event.type == pygame.KEYDOWN and not (
