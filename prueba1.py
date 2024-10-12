@@ -21,14 +21,14 @@ CATEGORY_COLORS = {
     'Bebidas': (144, 238, 144),
     'Carnes': (255, 182, 193),
     'Aseo': (165, 209, 229),
-    'Frutas': (211, 161, 227),
-    'Verduras': (127, 191, 144),
+    'Frutas': (255, 160, 122),
+    'Verduras': (57, 188, 24),
     'Snacks': (147, 152, 134),
     'Cereales': (222, 184, 135),
     'Panadería': (255, 222, 173),
     'Congelados': (166, 156, 232),
-    'Huevos': (245, 228, 215),
-    'Embutidos': (255, 160, 122)
+    'Huevos': (217, 128, 27),
+    'Embutidos': (254, 100, 100)
 }
 
 # Bucle principal del programa
@@ -38,11 +38,13 @@ SCROLL_BAR_COLOR = (100, 100, 100)
 SCROLL_THUMB_COLOR = (80, 80, 80)
 
 # Crear la ventana
-width, height = 1320, 700
+width, height = 1330, 701
 screen = pygame.display.set_mode((width, height))
 dragging = False  # Indica si se está arrastrando el mouse
 zoom = 1.0  # Nivel de zoom inicial
 offset_x, offset_y = 0, 0
+mouse_x = 0
+mouse_y = 0
 pygame.display.set_caption("Proyecto Estructura De Datos - Arbol AVL - Andrés Felipe Giraldo Rojas - Carlos Andrés Castillo García")
 
 background_image = pygame.image.load('./img/background.jpg')  # Asegúrate de que 'background.jpg' existe
@@ -52,7 +54,6 @@ background_image = pygame.transform.scale(background_image, (width, height))
 pygame.font.init()
 font_size = int(13 * zoom)
 font = pygame.font.SysFont('Microsoft YaHei UI', font_size)
-
 
 # Clase para representar un nodo del árbol
 class TreeNode:
@@ -372,8 +373,7 @@ def load_tree_from_csv(filename, avl_tree):
                 id, name, quantity, price, category = row
                 root = avl_tree.insert(root, int(id), name, int(quantity), float(price), category)
     return root    
-    
-        
+            
 class CategoryLegendButton:
     def __init__(self, x, y, width, height):
         self.rect = pygame.Rect(x, y, width, height)
@@ -457,13 +457,6 @@ class IdSearchPopup:
         except ValueError:
             self.results_textbox.html_text = "Por favor, ingrese un ID válido (número entero)."
             self.results_textbox.rebuild()
-
-zoom = 1
-offset_x = 0
-offset_y = 0
-mouse_x = 0
-mouse_y = 0
-
 
 # Modificar la función draw_tree para usar los colores por categoría
 def draw_tree(screen, node, x, y, angle, depth, max_depth, length=500):
@@ -1060,10 +1053,6 @@ searching_by_id = False
 searching_by_price = False
 id_to_search = ""
 search_results = []
-category_button = CategoryLegendButton(width - 150, height - 60, 140, 38)
-update_product_button = pygame.Rect(width - 150, height - 310, 140, 40)
-save_button = pygame.Rect(width - 150, height - 410, 140, 40)
-load_button = pygame.Rect(width - 150, height - 460, 140, 40)
 clock = pygame.time.Clock()
 
 while running:
@@ -1102,19 +1091,23 @@ while running:
     screen.blit(category_search_text, (width - 140, height - 100))
 
     # Dibujar botón de actualización de producto
+    update_product_button = pygame.Rect(width - 150, height - 310, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), update_product_button)
     update_product_text = font.render("Actualizar Producto", True, WHITE)
     screen.blit(update_product_text, (width - 140, height - 300))
     
+    save_button = pygame.Rect(width - 150, height - 410, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), save_button)
     save_text = font.render("Guardar Inventario", True, WHITE)
     screen.blit(save_text, (width - 140, height - 400))
 
+    load_button = pygame.Rect(width - 150, height - 460, 140, 40)
     pygame.draw.rect(screen, (100, 100, 100), load_button)
     load_text = font.render("Cargar Inventario", True, WHITE)
     screen.blit(load_text, (width - 140, height - 450))
     
     # Dibujar botón de categorías
+    category_button = CategoryLegendButton(width - 150, height - 60, 140, 38)
     category_button.draw(screen, font)
 
     # Mostrar la leyenda si está activa
