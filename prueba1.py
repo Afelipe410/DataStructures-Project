@@ -1054,6 +1054,7 @@ searching_by_price = False
 id_to_search = ""
 search_results = []
 clock = pygame.time.Clock()
+category_button = CategoryLegendButton(width - 150, height - 60, 140, 38)
 
 while running:
     timedelta = clock.tick(60) / 1000.0
@@ -1107,7 +1108,6 @@ while running:
     screen.blit(load_text, (width - 140, height - 450))
     
     # Dibujar botón de categorías
-    category_button = CategoryLegendButton(width - 150, height - 60, 140, 38)
     category_button.draw(screen, font)
 
     # Mostrar la leyenda si está activa
